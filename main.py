@@ -24,9 +24,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description='FlexMoE')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--data', type=str, default='adni')
-    parser.add_argument('--modality', type=str, default='CB') # I G C B for ADNI, L N C for MIMIC
+    parser.add_argument('--modality', type=str, default='IGCB') # I G C B for ADNI, L N C for MIMIC
     parser.add_argument('--initial_filling', type=str, default='mean') # None mean
-    parser.add_argument('--train_epochs', type=int, default=20)
+    parser.add_argument('--train_epochs', type=int, default=50)
     parser.add_argument('--warm_up_epochs', type=int, default=5)
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--lr', type=float, default=1e-4)
@@ -44,10 +44,10 @@ def parse_args():
     parser.add_argument('--use_common_ids', type=str2bool, default=False) # Use common ids across modalities    
     parser.add_argument('--dropout', type=float, default=0.5) # Number of Routers
     parser.add_argument('--gate_loss_weight', type=float, default=1e-2)
-    parser.add_argument('--save', type=str2bool, default=False)
-    parser.add_argument('--load_model', type=str2bool, default=True)
+    parser.add_argument('--save', type=str2bool, default=True)
+    parser.add_argument('--load_model', type=str2bool, default=False)
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--n_runs', type=int, default=1)
+    parser.add_argument('--n_runs', type=int, default=3)
 
     return parser.parse_known_args()
 

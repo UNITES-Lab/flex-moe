@@ -12,5 +12,3 @@ Multimodal learning has gained increasing importance across various fields, offe
 
 <img src="assets/Model.png" width="100%">
 
-#### Full code with ADNI dataset Preprocessing will be uploaded soon (Oct 19th).
-
