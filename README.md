@@ -33,7 +33,7 @@ conda install -c conda-forge scanpy nibabel -y
 ## **Dataset (ADNI)***
 ***For the details, please refer to [data/adni/README.md](data/adni/README.md)**
 
-1. To access ADNI dataset, please first visit ADNI website: https://adni.loni.usc.edu/ and apply for data access here: https://ida.loni.usc.edu/collaboration/access/appApply.jsp?project=ADNI.
+1. To access ADNI dataset, please first visit ADNI website: https://adni.loni.usc.edu/ and apply for the data access here: https://ida.loni.usc.edu/collaboration/access/appApply.jsp?project=ADNI.
 2. Once you get an access, login to IDA and dowlonad necessary files for each modality.
     - Image:
         - {Subject ID}_{Scan date}
