@@ -65,11 +65,11 @@ data/
 
 ### Steps
 1. Search & Download -> Genetic Files -> Downloads, search below files and download
-- ADNI 1 SNP genotype data - PLINK
-- ADNI GO/2 SNP genotype data - Complete PLINK for sets 1 - 9
-- ADNI GO/2 SNP genotype data - Complete PLINK for sets 10 - 15
-- ADNI3 SNP genotype data Set 1 - PLINK
-- ADNI3 SNP genotype data Set 2 - PLINK
+    - ADNI 1 SNP genotype data - PLINK
+    - ADNI GO/2 SNP genotype data - Complete PLINK for sets 1 - 9
+    - ADNI GO/2 SNP genotype data - Complete PLINK for sets 10 - 15
+    - ADNI3 SNP genotype data Set 1 - PLINK
+    - ADNI3 SNP genotype data Set 2 - PLINK
 2. Unzip each file and place the unziped files (file name will match with above files) .bim, .bed, .fam files under `/data/adni/genomic/`
 3. Move to `data/adni/biospecimen` and follow step-by-step at [genomic/genomic_preprocess.ipynb](genomic/genomic_preprocess.ipynb)
 
@@ -89,11 +89,11 @@ data/
 
 ### Steps
 1. Search & Download -> ARC Builder, Search below files, add them into collections and download.
-- MEDHIST
-- NEUROEXM
-- PTDEMOG
-- RECCMEDS
-- VITALS
+    - MEDHIST
+    - NEUROEXM
+    - PTDEMOG
+    - RECCMEDS
+    - VITALS
 2. Unzip each file and place the unziped files under `/data/adni/clinical/`
 3. Move to `/data/adni/clinical` and run [clinical/clinical_preporcess.py](clinical/clinical_preporcess.py)
 
@@ -110,7 +110,7 @@ data/
 
 ### Steps
 1. Search & Download -> ARC Builder, Search below files, add them into collections and download.
-- APOERES
-- UPENNBIOMK_ROCHE_ELECSYS
+    - APOERES
+    - UPENNBIOMK_ROCHE_ELECSYS
 2. Unzip each file and place the unziped files under `/data/adni/biospecimen/`
 3. Move to `/data/adni/biospecimen` and run [biospecimen/biospecimen_preprocess.py](biospecimen/biospecimen_preprocess.py)

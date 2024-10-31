@@ -4,7 +4,7 @@
 
 Official implementation for "Flex-MoE: Modeling Arbitrary Modality Combination via the Flexible Mixture-of-Experts" accepted by NeurIPS 2024 (Spotlight).  
 
-- Authors: [Sukwon Yun](https://sukwonyun.github.io/), [Inyoung Choi](https://www.linkedin.com/in/inyoung-choi-77105221b/), [Jie Peng](https://openreview.net/profile?id=~Jie_Peng4), Yangfan Wu, [Jingxuan Bao](https://jingxuanbao.github.io/), Qiyiwen Zhang, [Jiayi Xin](https://www.linkedin.com/in/jiayi-xin/), [Qi Long](https://www.med.upenn.edu/long-lab/currentgroupmembers.html) and [Tianlong Chen](https://tianlong-chen.github.io/)
+- Authors: [Sukwon Yun](https://sukwonyun.github.io/), [Inyoung Choi](https://www.linkedin.com/in/inyoung-choi-77105221b/), [Jie Peng](https://openreview.net/profile?id=~Jie_Peng4), Yangfan Wu, [Jingxuan Bao](https://jingxuanbao.github.io/), [Qiyiwen Zhang](https://www.linkedin.com/in/qiyiwen-zhang-438354133), [Jiayi Xin](https://www.linkedin.com/in/jiayi-xin/), [Qi Long](https://www.med.upenn.edu/long-lab/currentgroupmembers.html) and [Tianlong Chen](https://tianlong-chen.github.io/)
 
 ## Overview
 
@@ -79,7 +79,7 @@ conda install -c conda-forge scanpy nibabel -y
             label_df = pd.read_csv('./data/your_dataset/your_label_csv_file', index_col='your_index')
             labels = label_df['your_label'].values.astype(np.int64)
             
-            with open('../data/your_dataset/your_index_train_valid_test_split.json') as json_file:
+            with open('./data/your_dataset/your_index_train_valid_test_split.json') as json_file:
                 data_split = json.load(json_file)
 
             id_to_idx = {id: idx for idx, id in enumerate(label_df.index)}
@@ -101,7 +101,7 @@ conda install -c conda-forge scanpy nibabel -y
 **Run Example**
 ```
 python main.py \
-    --n_runs 3 \
+    --data adni \
     --modality IG \
     --lr 1e-3 \
     --num_experts 16 \
@@ -111,6 +111,7 @@ python main.py \
     --warm_up_epochs 5 \
     --hidden_dim 128 \
     --batch_size 16 \
+    --n_runs 3 \
     --device 0
 ```
 
@@ -122,14 +123,14 @@ sh run_adni_igcb.sh
 ## **Citation**
 
 ```bibtex
-@misc{yun2024mew,
-      title={Mew: Multiplexed Immunofluorescence Image Analysis through an Efficient Multiplex Network}, 
-      author={Sukwon Yun and Jie Peng and Alexandro E. Trevino and Chanyoung Park and Tianlong Chen},
+@misc{yun2024flexmoemodelingarbitrarymodality,
+      title={Flex-MoE: Modeling Arbitrary Modality Combination via the Flexible Mixture-of-Experts}, 
+      author={Sukwon Yun and Inyoung Choi and Jie Peng and Yangfan Wu and Jingxuan Bao and Qiyiwen Zhang and Jiayi Xin and Qi Long and Tianlong Chen},
       year={2024},
-      eprint={2407.17857},
+      eprint={2410.08245},
       archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2407.17857}, 
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2410.08245}, 
 }
 ```
 
