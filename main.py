@@ -112,23 +112,21 @@ def train_and_evaluate(args, seed, save_path=None):
     num_modalities = len(args.modality)
 
     if args.data == 'adni':
-        data_dict, encoder_dict, labels, train_ids, valid_ids, test_ids, n_labels, input_dims, transforms, masks, observed_idx_arr, full_modality_index = load_and_preprocess_data(args)
-        n_full_modalities = 4
-
+        modality_dict = {'image':0, 'genomic': 1, 'clinical': 2, 'biospecimen': 3}
+        args.n_full_modalities = len(modality_dict)
+        data_dict, encoder_dict, labels, train_ids, valid_ids, test_ids, n_labels, input_dims, transforms, masks, observed_idx_arr, full_modality_index = load_and_preprocess_data(args, modality_dict)
+        
     train_loader, train_loader_shuffle, val_loader, test_loader = create_loaders(data_dict, observed_idx_arr, labels, train_ids, valid_ids, test_ids, args.batch_size, args.num_workers, args.pin_memory, input_dims, transforms, masks, args.use_common_ids)
     fusion_model = FlexMoE(num_modalities, full_modality_index, args.num_patches, args.hidden_dim, n_labels, args.num_layers_fus, args.num_layers_pred, args.num_experts, args.num_routers, args.top_k, args.num_heads, args.dropout).to(device)
     params = list(fusion_model.parameters()) + [param for encoder in encoder_dict.values() for param in encoder.parameters()]    
     if num_modalities > 1:
-        missing_embeds = torch.nn.Parameter(torch.randn((2**num_modalities)-1, n_full_modalities, args.num_patches, args.hidden_dim, dtype=torch.float, device=device), requires_grad=True)
+        missing_embeds = torch.nn.Parameter(torch.randn((2**num_modalities)-1, args.n_full_modalities, args.num_patches, args.hidden_dim, dtype=torch.float, device=device), requires_grad=True)
         params += [missing_embeds]
 
     optimizer = torch.optim.Adam(params, lr=args.lr)
     criterion = torch.nn.CrossEntropyLoss() if args.data == 'adni' else torch.nn.CrossEntropyLoss(torch.tensor([0.25, 0.75]).to(device))
 
     best_val_acc = 0.0
-    
-    if args.data == 'adni':
-        modality_dict = {'image':0, 'genomic': 1, 'clinical': 2, 'biospecimen': 3}
 
     if save_path is None:
         for epoch in trange(args.train_epochs):

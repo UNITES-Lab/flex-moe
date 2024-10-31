@@ -1,0 +1,509 @@
+BootStrap: yum
+OSVersion: 7
+MirrorURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/os/$basearch/
+UpdateURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/updates/$basearch/
+Include: yum
+
+%labels
+	Author Jimit.Doshi@pennmedicine.upenn.edu
+	Version v1.0.0
+
+%help
+	This container contains all dependencies required for running the 
+	CBICA pipeline.
+	
+	Specifically, the following packages are installed in a centos7 OS
+		- cmake-3.11.4
+			https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh
+		- miniconda3-4.8.2
+			https://repo.continuum.io/miniconda/Miniconda3-py37_4.8.2-Linux-x86_64.sh
+		- fsl-5.0.11
+			https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-5.0.11-centos7_64.tar.gz
+		- afni-2018.10.19.1703
+			https://afni.nimh.nih.gov/pub/dist/tgz/linux_centos_7_64.tgz
+		- mico-1.1.0
+			https://github.com/CBICA/MICO/archive/1.1.0.tar.gz
+		- ants-2.3.1
+			https://github.com/ANTsX/ANTs/archive/v2.3.1.tar.gz
+		- nifticlib-2.0.0
+			https://github.com/NIFTI-Imaging/nifti_clib.git
+		- cmake-2.8.12
+			https://cmake.org/files/v2.8/cmake-2.8.12.tar.gz
+		- basis-2.1.4
+			https://github.com/CBICA/BASIS/archive/2.1.4.tar.gz
+		- dramms-1.4.1
+			https://github.com/ouyangming/DRAMMS.git
+		- mass-1.1.1
+			https://github.com/CBICA/MASS/releases/tag/1.1.1
+		- muse-3.1.0
+			https://github.com/CBICA/MUSE/releases/tag/3.1.0
+
+%setup
+
+%post
+	NOW=`env TZ=America/New_York date`
+	echo "export NOW=\"${NOW}\"" >> $SINGULARITY_ENVIRONMENT
+
+%runscript
+	echo -e "\nContainer was created: $NOW"
+	echo -e "Arguments received: $*\n"
+	exec "$@"
+
+%environment
+
+%post
+	yum -y install \
+		gcc \
+		gcc-c++ \
+		make \
+		unzip \
+		wget \
+		tar \
+		gzip \
+		zlib-devel \
+		git \
+		which \
+		patch \
+		bc \
+		hostname
+	
+	yum update -y
+
+	yum install -y epel-release
+	yum install -y tcsh libXp openmotif gsl xorg-x11-fonts-misc       \
+                    PyQt4 R-devel netpbm-progs gnome-tweak-tool ed     \
+                    libpng12 xorg-x11-server-Xvfb firefox
+	yum update -y
+	
+	curl -s \
+	https://packagecloud.io/install/repositories/github/git-lfs/script.rpm.sh | bash \
+	&& yum install -y git-lfs \
+	&& git lfs install
+
+	yum update -y
+	
+%startscript
+
+%test
+
+################################
+### CMAKE
+################################
+
+%environment
+	export PATH=/opt/cbica/software/cmake-3.11.4/bin/:$PATH
+	
+%post
+	echo -e "\n\n Installing CMAKE-3.11.4 \n\n"
+	
+	mkdir -pv /opt/cbica/src/cmake-3.11.4/ \
+	&& wget --progress=bar:force https://cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.sh \
+		-O /opt/cbica/src/cmake-3.11.4/cmake-3.11.4-Linux-x86_64.sh \
+	&& mkdir -pv /opt/cbica/software/cmake-3.11.4 \
+	&& sh /opt/cbica/src/cmake-3.11.4/cmake-3.11.4-Linux-x86_64.sh \
+		--prefix=/opt/cbica/software/cmake-3.11.4 \
+		--skip-license > /opt/cbica/src/cmake-3.11.4/install.log 2>&1 \
+	&& rm -rf /opt/cbica/src/cmake-3.11.4/cmake-3.11.4-Linux-x86_64.sh
+
+###############################
+### AFNI
+###############################
+
+%environment
+	export PATH=/opt/cbica/software/afni-2018.10.19.1703:$PATH
+	export AFNI_PLUGINPATH=/opt/cbica/software/afni-2018.10.19.1703
+	
+	export R_LIBS=/opt/cbica/R
+
+%post
+	echo -e "\n\n Installing afni-2018.10.19.1703 \n\n"
+
+	mkdir -pv /opt/cbica/src/afni-2018.10.19.1703/ /opt/cbica/src/R/ \
+	&& mkdir -pv /opt/cbica/software/afni-2018.10.19.1703 \
+	&& wget --progress=bar:force \
+		https://afni.nimh.nih.gov/pub/dist/tgz/linux_centos_7_64.tgz \
+		-O /opt/cbica/src/afni-2018.10.19.1703/linux_centos_7_64.tgz \
+	&& tar -xzf \
+		/opt/cbica/src/afni-2018.10.19.1703/linux_centos_7_64.tgz \
+		-C /opt/cbica/software/afni-2018.10.19.1703/ --strip-components 1 \
+	&& rm -rf /opt/cbica/src/afni-2018.10.19.1703/linux_centos_7_64.tgz \
+	&& /opt/cbica/software/afni-2018.10.19.1703/afni -ver \
+		> /opt/cbica/src/afni-2018.10.19.1703/afni-version.log 2>&1
+	
+
+	echo "Installing R ..." \
+	&& mkdir -pv /opt/cbica/src/R \
+	&& export R_LIBS=/opt/cbica/software/R \
+	&& export PATH=$PATH:/opt/cbica/software/afni-2018.10.19.1703 \
+	&& mkdir $R_LIBS \
+	&& rPkgsInstall -pkgs ALL > /opt/cbica/src/R/rPkgsInstall.log 2>&1 &
+
+%test
+	echo -e "\nTesting afni exec(s)"
+	which 3dcalc
+	which 3dBrickStat
+	which 3dclust
+	which 3dTsort
+	which 3dmerge
+	afni -ver
+
+################################
+### MINICONDA
+################################
+
+%environment
+	export PATH=/opt/cbica/software/miniconda3-4.8.2/bin:$PATH
+
+%post
+	sleep 10s && echo -e "\n\n Installing miniconda3-4.8.2 \n\n"
+	
+	mkdir -pv /opt/cbica/src/miniconda3-4.8.2/ \
+	&& wget --progress=bar:force \
+		https://repo.continuum.io/miniconda/Miniconda3-py37_4.8.2-Linux-x86_64.sh \
+		-O /opt/cbica/src/miniconda3-4.8.2/miniconda.sh \
+	&& bash /opt/cbica/src/miniconda3-4.8.2/miniconda.sh \
+		-b -p /opt/cbica/software/miniconda3-4.8.2 \
+		> /opt/cbica/src/miniconda3-4.8.2/install.log 2>&1 \
+	&& export PATH=$PATH:/opt/cbica/software/miniconda3-4.8.2/bin \
+	\
+	&& conda update -yq -nbase \
+		conda > /opt/cbica/src/miniconda3-4.8.2/conda-update.log 2>&1 \
+	&& conda config --system --prepend \
+		channels conda-forge > /opt/cbica/src/miniconda3-4.8.2/conda-config.log 2>&1 \
+	&& conda config \
+		--system --set auto_update_conda \
+		false > /opt/cbica/src/miniconda3-4.8.2/conda-config.log 2>&1 \
+	&& conda config \
+		--system --set show_channel_urls \
+		true > /opt/cbica/src/miniconda3-4.8.2/conda-config.log 2>&1 \
+	&& sync > /opt/cbica/src/miniconda3-4.8.2/sync1.log 2>&1 \
+	&& conda clean \
+		-tipsy > /opt/cbica/src/miniconda3-4.8.2/conda-clean.log 2>&1 \
+	&& sync > /opt/cbica/src/miniconda3-4.8.2/sync2.log 2>&1 \
+	&& conda install -y -q \
+           python=3.6 \
+           numpy \
+           pandas \
+           scikit-learn > /opt/cbica/src/miniconda3-4.8.2/conda-install.log 2>&1 \
+	&& conda install -y -q \
+		libgfortran >> /opt/cbica/src/miniconda3-4.8.2/conda-install.log 2>&1 \
+	&& sync > /opt/cbica/src/miniconda3-4.8.2/sync3.log 2>&1 \
+	&& conda clean \
+		-tipsy > /opt/cbica/src/miniconda3-4.8.2/conda-clean2.log 2>&1 \
+	&& sync > /opt/cbica/src/miniconda3-4.8.2/sync4.log 2>&1 \
+	&& conda install -y -q \
+		nibabel >> /opt/cbica/src/miniconda3-4.8.2/conda-install.log 2>&1 \
+	&& rm -rf ~/.cache/pip/* \
+	&& sync > /opt/cbica/src/miniconda3-4.8.2/sync5.log 2>&1 \
+	&& rm -rf /opt/cbica/src/miniconda3-4.8.2/miniconda.sh
+
+%test
+	echo -e "\nTesting python exec(s)"
+	python --version
+	python -c "import numpy; import nibabel; import sklearn; import pandas;"
+	pip freeze
+	
+################################
+### FSL
+################################
+
+#%files
+#	fsl-5.0.11-centos7_64.tar.gz /opt/cbica/src/fsl-5.0.11/
+	
+%environment
+	export PATH=/opt/cbica/software/fsl-5.0.11/bin:$PATH
+	export FSLDIR=/opt/cbica/software/fsl-5.0.11/
+	source ${FSLDIR}/etc/fslconf/fsl.sh
+	
+%post
+	echo -e "\n\n Installing fsl-5.0.11 \n\n"
+	
+	mkdir -pv /opt/cbica/src/fsl-5.0.11/ \
+	&& cd /opt/cbica/src/fsl-5.0.11/ \
+	&& wget --progress=bar:force \
+		https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-5.0.11-centos7_64.tar.gz \
+		-O /opt/cbica/src/fsl-5.0.11/fsl-5.0.11-centos7_64.tar.gz \
+	&& tar -xzf \
+		/opt/cbica/src/fsl-5.0.11/fsl-5.0.11-centos7_64.tar.gz \
+		-C /opt/cbica/software/ \
+	&& mv -v /opt/cbica/software/fsl /opt/cbica/software/fsl-5.0.11 \
+	&& echo "Installing fsl-5.0.11 conda environment ..." \
+	&& bash /opt/cbica/software/fsl-5.0.11/etc/fslconf/fslpython_install.sh \
+		-f /opt/cbica/software/fsl-5.0.11 > /opt/cbica/src/fsl-5.0.11/fslpython.log 2>&1 \
+	&& rm -rf /opt/cbica/src/fsl-5.0.11/fsl-5.0.11-centos7_64.tar.gz
+
+%test
+	echo -e "\nTesting fsl exec(s)"
+	which fast 
+	which flirt
+	which fslmaths
+	which fslsplit
+
+###############################
+### MICO
+###############################
+
+%environment
+	export PATH=/opt/cbica/software/mico-1.1.0/bin:$PATH
+
+%post
+	echo -e "\n\n Installing mico-1.1.0 \n\n"
+	
+	mkdir /opt/cbica/src/mico-1.1.0 \
+	&& cd /opt/cbica/src/mico-1.1.0 \
+	&& git clone https://github.com/CBICA/MICO.git \
+	&& cd MICO \
+	&& git checkout tags/1.1.0 \
+	&& cd .. \
+	&& mkdir build \
+	&& cd build \
+	&& /opt/cbica/software/cmake-3.11.4/bin/cmake \
+		-D CMAKE_INSTALL_PREFIX=/opt/cbica/software/mico-1.1.0 \
+		../MICO > /opt/cbica/src/mico-1.1.0/cmake1.log 2>&1 \
+	&& make -j4 > /opt/cbica/src/mico-1.1.0/make1.log 2>&1 \
+	&& /opt/cbica/software/cmake-3.11.4/bin/cmake \
+		-D CMAKE_INSTALL_PREFIX=/opt/cbica/software/mico-1.1.0 \
+		../MICO > /opt/cbica/src/mico-1.1.0/cmake2.log 2>&1 \
+	&& make -j4 > /opt/cbica/src/mico-1.1.0/make2.log 2>&1 \
+	&& make install > /opt/cbica/src/mico-1.1.0/install.log 2>&1 \
+	&& rm -rf /opt/cbica/src/mico-1.1.0/MICO \
+		/opt/cbica/src/mico-1.1.0/build
+
+%test
+	echo -e "\nTesting mico exec(s)"
+	which mico
+
+##############################
+## ANTS
+##############################
+	
+%environment
+	export PATH=/opt/cbica/software/ants-2.3.1/bin:$PATH
+	export ANTSPATH="/opt/cbica/software/ants-2.3.1/bin"
+	export LD_LIBRARY_PATH="/opt/cbica/software/ants-2.3.1/lib:$LD_LIBRARY_PATH"
+	
+%post
+	echo -e "\n\n Installing ants-2.3.1 \n\n"
+	
+	mkdir -pv /opt/cbica/src/ants-2.3.1/ /opt/cbica/software/ants-2.3.1/ \
+	&& cd /opt/cbica/src/ants-2.3.1/ \
+	&& git clone https://github.com/ANTsX/ANTs.git \
+	&& cd ANTs \
+	&& git checkout tags/v2.3.1 \
+	&& cd .. \
+	&& cd /opt/cbica/software/ants-2.3.1/ \
+	&& /opt/cbica/software/cmake-3.11.4/bin/cmake \
+		-D BUILD_SHARED_LIBS=ON \
+		-D SuperBuild_ANTS_USE_GIT_PROTOCOL=OFF \
+		/opt/cbica/src/ants-2.3.1/ANTs > /opt/cbica/src/ants-2.3.1/cmake.log 2>&1 \
+	&& make -j4 > /opt/cbica/src/ants-2.3.1/make.log 2>&1 \
+	&& rm -rf /opt/cbica/src/ants-2.3.1/ANTs
+
+%test
+	echo -e "\nTesting ants exec(s)"
+	which ANTS
+
+##############################
+## NIFTICLIB
+##############################
+	
+%environment
+	export PATH=/opt/cbica/software/nifticlib-2.0.0/bin:$PATH
+	
+%post
+	echo -e "\n\n Installing nifticlib-2.0.0 \n\n"
+
+	mkdir -pv /opt/cbica/src/nifticlib-2.0.0 \
+	&& cd /opt/cbica/software \
+	&& git clone https://github.com/NIFTI-Imaging/nifti_clib.git \
+	&& cd nifti_clib \
+	&& git checkout tags/v2.0.0 \
+	&& cd .. \
+	&& mv -v nifti_clib nifticlib-2.0.0 \
+	&& cd /opt/cbica/software/nifticlib-2.0.0/ \
+	&& make all > /opt/cbica/src/nifticlib-2.0.0/make.log 2>&1 \
+	&& make install > /opt/cbica/src/nifticlib-2.0.0/install.log 2>&1 \
+	&& rm -f /opt/cbica/software/nifticlib-2.0.0/nifticlib-2.0.0.tar.gz
+	
+%test
+	echo -e "\nTesting nifticlib exec(s)"
+	which nifti1_test
+	
+##############################
+## OLDER CMAKE
+##############################
+	
+%post
+	echo -e "\n\n Installing cmake-2.8.12 \n\n"
+
+	mkdir -pv /opt/cbica/src/cmake-2.8.12 \
+	&& wget --progress=bar:force https://cmake.org/files/v2.8/cmake-2.8.12.tar.gz \
+		-O /opt/cbica/src/cmake-2.8.12/cmake-2.8.12.tar.gz \
+	&& tar -xzf \
+		/opt/cbica/src/cmake-2.8.12/cmake-2.8.12.tar.gz \
+		-C /opt/cbica/src/cmake-2.8.12/ \
+	&& cd /opt/cbica/src/cmake-2.8.12/cmake-2.8.12 \
+	&& ./bootstrap \
+		--prefix=/opt/cbica/software/cmake-2.8.12 \
+		> /opt/cbica/src/cmake-2.8.12/bootstrap.log 2>&1 \
+	&& make -j4 > /opt/cbica/src/cmake-2.8.12/make.log 2>&1 \
+	&& make install > /opt/cbica/src/cmake-2.8.12/install.log 2>&1 \
+	&& rm -rf /opt/cbica/src/cmake-2.8.12/cmake-2.8.12.tar.gz \
+		/opt/cbica/src/cmake-2.8.12/cmake-2.8.12
+
+##############################
+## BASIS
+##############################
+	
+%post
+	echo -e "\n\n Installing basis-2.1.4 \n\n"
+
+	mkdir /opt/cbica/src/basis-2.1.4 \
+	&& cd /opt/cbica/src/basis-2.1.4 \
+	&& git clone https://github.com/CBICA/BASIS.git \
+	&& cd BASIS \
+	&& git checkout tags/2.1.4 \
+	&& cd .. \
+	&& mkdir build \
+	&& cd build \
+	&& /opt/cbica/software/cmake-2.8.12/bin/cmake -Wno-dev \
+		-D BUILD_DOCUMENTATION=OFF \
+		-D CMAKE_INSTALL_PREFIX=/opt/cbica/software/basis-2.1.4 \
+		../BASIS > /opt/cbica/src/basis-2.1.4/cmake.log 2>&1 \
+	&& make > /opt/cbica/src/basis-2.1.4/make.log 2>&1 \
+	&& make install > /opt/cbica/src/basis-2.1.4/install.log 2>&1 \
+	&& rm -rf /opt/cbica/src/basis-2.1.4/BASIS \
+		/opt/cbica/src/basis-2.1.4/build
+
+###############################
+### DRAMMS
+###############################
+
+%environment
+	export PATH=/opt/cbica/software/dramms-1.4.1/bin:$PATH
+	export DRAMMS_DIR=/opt/cbica/software/dramms-1.4.1
+	
+%post
+	echo -e "\n\n Installing dramms-1.4.1 \n\n"
+	
+	# GET DRAMMS
+	mkdir -pv /opt/cbica/src/dramms-1.4.1 \
+	&& cd /opt/cbica/src/dramms-1.4.1 \
+	&& git clone https://github.com/ouyangming/DRAMMS.git
+
+	# FASTPD
+	echo -e "\n Installing fastpd \n"
+	mkdir -pv /opt/cbica/src/fastpd \
+	&& cd /opt/cbica/src/fastpd \
+	&& wget --progress=bar:force \
+		http://www.csd.uoc.gr/~komod/php/download.php?f=FastPD_DemoVersion.zip \
+		-O /opt/cbica/src/fastpd/FastPD_DemoVersion.zip \
+	&& unzip FastPD_DemoVersion.zip -d /opt/cbica/software/dramms-fastpd \
+	&& patch -d /opt/cbica/software/dramms-fastpd -p1 \
+		< /opt/cbica/src/dramms-1.4.1/DRAMMS/dramms-1.4.1-source/build/FastPD.patch \
+	&& cd /opt/cbica/software/dramms-fastpd \
+	&& /opt/cbica/software/cmake-3.11.4/bin/cmake \
+		-D CMAKE_BUILD_TYPE:STRING=Release . > /opt/cbica/src/fastpd/cmake.log 2>&1 \
+	&& make > /opt/cbica/src/fastpd/make.log 2>&1 \
+	&& rm -rf /opt/cbica/src/fastpd/FastPD_DemoVersion.zip
+
+	# DRAMMS
+	echo -e "\n Installing dramms-1.4.1 \n"
+	cd /opt/cbica/src/dramms-1.4.1/DRAMMS/dramms-1.4.1-source/build/ \
+	&& /opt/cbica/software/cmake-2.8.12/bin/cmake \
+		-Wno-dev \
+		-D BASIS_DIR=/opt/cbica/software/basis-2.1.4 \
+		-D NiftiCLib_DIR=/opt/cbica/software/nifticlib-2.0.0 \
+		-D NiftiCLib_INCLUDE_DIR=/opt/cbica/software/nifticlib-2.0.0/include \
+		-D DRAMMSFastPD_DIR=/opt/cbica/software/dramms-fastpd \
+		-D CMAKE_INSTALL_PREFIX=/opt/cbica/software/dramms-1.4.1 \
+		../ > /opt/cbica/src/dramms-1.4.1/cmake.log 2>&1 \
+	&& make > /opt/cbica/src/dramms-1.4.1/make.log 2>&1 \
+	&& make clean > /opt/cbica/src/dramms-1.4.1/clean.log 2>&1 \
+	&& make install > /opt/cbica/src/dramms-1.4.1/install.log 2>&1 \
+	&& rm -rf /opt/cbica/src/dramms-1.4.1/DRAMMS
+
+%test
+	echo -e "\nTesting dramms exec(s)"
+	which dramms
+	dramms --version
+
+
+#############################
+# WAIT
+#############################
+
+%post
+	wait `jobs -p`
+	
+###############################
+### MASS
+###############################
+
+%environment
+	export PATH=/opt/cbica/software/mass-1.1.1/bin:$PATH
+	export MASS_DIR=/opt/cbica/software/mass-1.1.1
+	
+%post
+	echo -e "\n\n Installing mass-1.1.1 \n\n"
+	
+	mkdir -pv /opt/cbica/src/mass-1.1.1/ \
+	&& cd /opt/cbica/src/mass-1.1.1/ \
+	&& git lfs clone https://github.com/CBICA/MASS.git \
+	&& cd MASS \
+	&& git checkout tags/1.1.1 \
+	&& cd .. \
+	&& mkdir mass-1.1.1-build \
+	&& cd mass-1.1.1-build \
+	&& export PATH=/opt/cbica/software/afni-2018.10.19.1703:$PATH \
+	&& export PATH=/opt/cbica/software/fsl-5.0.11/bin:$PATH \
+	&& export PATH=/opt/cbica/software/mico-1.1.0/bin:$PATH \
+	&& export PATH=/opt/cbica/software/ants-2.3.1/bin:$PATH \
+	&& export PATH=/opt/cbica/software/dramms-1.4.1/bin:$PATH \
+	&& export PATH=/opt/cbica/software/nifticlib-2.0.0/bin:$PATH \
+	&& /opt/cbica/software/cmake-3.11.4/bin/cmake -Wno-dev \
+		-D CMAKE_INSTALL_PREFIX=/opt/cbica/software/mass-1.1.1 \
+		-D SCHEDULER=NONE \
+		../MASS > /opt/cbica/src/mass-1.1.1/cmake.log 2>&1 \
+	&& make > /opt/cbica/src/mass-1.1.1/make.log 2>&1 \
+	&& make install > /opt/cbica/src/mass-1.1.1/install.log 2>&1 \
+	&& chmod 755 /opt/cbica/software/mass-1.1.1 -R \
+	&& rm -rf /opt/cbica/src/mass-1.1.1/mass-1.1.1-build \
+		/opt/cbica/src/mass-1.1.1/MASS
+
+%test
+	echo -e "\nTesting mass exec(s)"
+	which mass
+	
+###############################
+### MUSE
+###############################
+
+%environment
+	export PATH=/opt/cbica/software/muse-3.1.0/bin:$PATH
+	export MUSE_DIR=/opt/cbica/software/muse-3.1.0
+	
+%post
+	echo -e "\n\n Installing muse-3.1.0 \n\n"
+	
+	mkdir -pv /opt/cbica/src/muse-3.1.0/ \
+	&& cd /opt/cbica/src/muse-3.1.0/ \
+	&& git lfs clone https://github.com/CBICA/MUSE.git \
+	&& cd MUSE \
+	&& git checkout tags/3.1.0 \
+	&& cd .. \
+	&& mkdir muse-3.1.0-build \
+	&& cd muse-3.1.0-build \
+	&& /opt/cbica/software/cmake-3.11.4/bin/cmake -Wno-dev \
+		-D CMAKE_INSTALL_PREFIX=/opt/cbica/software/muse-3.1.0 \
+		-D SCHEDULER=NONE \
+		../MUSE > /opt/cbica/src/muse-3.1.0/cmake.log 2>&1 \
+	&& make > /opt/cbica/src/muse-3.1.0/make.log 2>&1 \
+	&& make install > /opt/cbica/src/muse-3.1.0/install.log 2>&1 \
+	&& chmod 755 /opt/cbica/software/muse-3.1.0 -R \
+	&& rm -rf /opt/cbica/src/muse-3.1.0/MUSE \
+		/opt/cbica/src/muse-3.1.0/muse-3.1.0-build
+
+%test
+	echo -e "\nTesting muse exec(s)"
+	which muse

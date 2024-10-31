@@ -67,7 +67,7 @@ def load_and_preprocess_image_data(image_path, label_df, id_to_idx):
     
     subject_ids = []
     dates = []
-    with open('../data/adni/image/ADNI_subj.txt', 'r') as file:
+    with open('./data/adni/image/ADNI_subj.txt', 'r') as file:
         for line in file:
             line = line.strip()
             parts = line.split('_')
@@ -110,18 +110,18 @@ def load_and_preprocess_image_data(image_path, label_df, id_to_idx):
     return tmp, filtered_idx, mean, std, mask_gm
 
 
-def load_and_preprocess_data(args):
+def load_and_preprocess_data(args, modality_dict):
     # Paths
-    image_path = '../data/adni/image'
-    genomic_path = '../data/adni/genomic/genomic_merged.h5ad'
-    clinical_path = '../data/adni/clinical/clinical_merged'
-    biospecimen_path = '../data/adni/biospecimen/biospecimen_merged'
-    label_df = pd.read_csv('../data/adni/label.csv', index_col='PTID')
+    image_path = './data/adni/image'
+    genomic_path = './data/adni/genomic/genomic_merged.h5ad'
+    clinical_path = './data/adni/clinical/clinical_merged'
+    biospecimen_path = './data/adni/biospecimen/biospecimen_merged'
+    label_df = pd.read_csv('./data/adni/label.csv', index_col='PTID')
     label_df['DIAGNOSIS'] -= 1
     labels = label_df['DIAGNOSIS'].values.astype(np.int64)
     n_labels = len(set(labels))
 
-    with open('../data/adni/PTID_splits.json') as json_file:
+    with open('./data/adni/PTID_splits.json') as json_file:
         data_split = json.load(json_file)
 
     train_ids = list(set(data_split['training']))
@@ -151,11 +151,12 @@ def load_and_preprocess_data(args):
     # Load modalities
     if 'I' in args.modality or 'i' in args.modality:
         arr, filtered_idx, mean, std, mask = load_and_preprocess_image_data(image_path, label_df, id_to_idx)
-        observed_idx_arr[:,0] = arr[:,0] != -2
-        data_dict['image'] = np.array(arr)
-        common_idx_list.append(set(filtered_idx))
+        observed_idx_arr[:, modality_dict['image']] = arr[:, 0] != -2
         for idx in filtered_idx:
             update_modality_combinations(idx, 'I')
+
+        data_dict['image'] = np.array(arr)
+        common_idx_list.append(set(filtered_idx))
         encoder_dict['image'] = torch.nn.Sequential(
             Custom3DCNN(hidden_dim=args.hidden_dim).to(args.device),
             PatchEmbeddings(feature_size=args.hidden_dim, num_patches=args.num_patches, embed_dim=args.hidden_dim).to(args.device)
@@ -170,18 +171,18 @@ def load_and_preprocess_data(args):
     if 'G' in args.modality or 'g' in args.modality:
         df = sc.read_h5ad(genomic_path).to_df()
         if args.initial_filling == 'mean':
-            df = df.apply(lambda x: x.fillna(x.mode().iloc[0]), axis=0)
+            df = df.apply(lambda x: x.fillna(x.mode().iloc[0]), axis=0) # use mode as genotype values are 0,1,2
         arr = df.values
         scaler = MinMaxScaler(feature_range=(-1, 1))
         arr = scaler.fit_transform(arr)
         new_idx = np.array(convert_ids_to_index(df.index, id_to_idx))
         filtered_idx = new_idx[new_idx != -1]
+        observed_idx_arr[filtered_idx, modality_dict['genomic']] = True
         for idx in filtered_idx:
             update_modality_combinations(idx, 'G')
         tmp = np.zeros((len(id_to_idx), arr.shape[1])) - 2
         tmp[filtered_idx] = arr[new_idx != -1]
 
-        observed_idx_arr[filtered_idx,1] = True
         data_dict['genomic'] = tmp.astype(np.float32)
         common_idx_list.append(set(filtered_idx))
         encoder_dict['genomic'] = PatchEmbeddings(df.shape[1], args.num_patches, args.hidden_dim).to(args.device)
@@ -199,7 +200,7 @@ def load_and_preprocess_data(args):
         arr = df.values.astype(np.float32)
         new_idx = np.array(convert_ids_to_index(df.index, id_to_idx))
         filtered_idx = new_idx[new_idx != -1]
-        observed_idx_arr[filtered_idx,2] = True
+        observed_idx_arr[filtered_idx, modality_dict['clinical']] = True
         for idx in filtered_idx:
             update_modality_combinations(idx, 'C')
         tmp = np.zeros((len(id_to_idx), arr.shape[1])) - 2
@@ -219,11 +220,12 @@ def load_and_preprocess_data(args):
         arr = df.values
         new_idx = np.array(convert_ids_to_index(df.index, id_to_idx))
         filtered_idx = new_idx[new_idx != -1]
+        observed_idx_arr[filtered_idx, modality_dict['biospecimen']] = True
         for idx in filtered_idx:
             update_modality_combinations(idx, 'B')
         tmp = np.zeros((len(id_to_idx), arr.shape[1])) - 2
         tmp[filtered_idx] = arr[new_idx != -1]
-        observed_idx_arr[filtered_idx,3] = True
+        
         data_dict['biospecimen'] = tmp.astype(np.float32)
         common_idx_list.append(set(filtered_idx))
         encoder_dict['biospecimen'] = PatchEmbeddings(df.shape[1], args.num_patches, args.hidden_dim).to(args.device)
@@ -254,16 +256,16 @@ def load_and_preprocess_data(args):
 
     return data_dict, encoder_dict, labels, train_idxs, valid_idxs, test_idxs, n_labels, input_dims, transforms, masks, observed_idx_arr, full_modality_index
 
-def load_and_preprocess_data_mimic(args):
+def load_and_preprocess_data_mimic(args, modality_dict):
     # Paths
-    lab_path = '../data/mimic/lab_x'
-    note_path = '../data/mimic/note_x'
-    code_path = '../data/mimic/code_x'
-    label_df = pd.read_csv('../data/mimic/labels.csv', index_col='subject_id')
+    lab_path = './data/mimic/lab_x'
+    note_path = './data/mimic/note_x'
+    code_path = './data/mimic/code_x'
+    label_df = pd.read_csv('./data/mimic/labels.csv', index_col='subject_id')
     labels = label_df['one_year_mortality'].values.astype(np.int64)
     n_labels = len(set(labels))
 
-    with open('../data/mimic/PTID_splits_mimic.json') as json_file:
+    with open('./data/mimic/PTID_splits_mimic.json') as json_file:
         data_split = json.load(json_file)
 
     train_ids = list(set(data_split['training']))
@@ -278,7 +280,7 @@ def load_and_preprocess_data_mimic(args):
 
     id_to_idx = {id: idx for idx, id in enumerate(label_df.index)}
     common_idx_list = []
-    observed_idx_arr = np.zeros((labels.shape[0],4), dtype=bool) # IGCB order
+    observed_idx_arr = np.zeros((labels.shape[0], args.n_full_modalities), dtype=bool) # IGCB order
 
     # Initialize modality combination list
     modality_combinations = [''] * len(id_to_idx)
@@ -296,11 +298,12 @@ def load_and_preprocess_data_mimic(args):
         arr = torch.load(path+'.pt')
         new_idx = np.arange(arr.shape[0])
         filtered_idx = new_idx[new_idx != -1]
+        observed_idx_arr[filtered_idx, modality_dict['lab']] = True
         for idx in filtered_idx:
             update_modality_combinations(idx, 'L')
         tmp = np.zeros((len(id_to_idx), arr.shape[1])) - 2
         tmp[filtered_idx] = arr[new_idx != -1]
-        observed_idx_arr[filtered_idx, 0] = True
+        
         data_dict['lab'] = tmp.astype(np.float32)
         common_idx_list.append(set(filtered_idx))
         encoder_dict['lab'] = PatchEmbeddings(arr.shape[1], args.num_patches, args.hidden_dim).to(args.device)
@@ -311,11 +314,12 @@ def load_and_preprocess_data_mimic(args):
         arr = torch.load(path+'.pt')
         new_idx = np.arange(arr.shape[0])
         filtered_idx = new_idx[new_idx != -1]
+        observed_idx_arr[filtered_idx, modality_dict['note']] = True
         for idx in filtered_idx:
             update_modality_combinations(idx, 'N')
         tmp = np.zeros((len(id_to_idx), arr.shape[1])) - 2
         tmp[filtered_idx] = arr[new_idx != -1]
-        observed_idx_arr[filtered_idx, 1] = True
+        
         data_dict['note'] = tmp.astype(np.float32)
         common_idx_list.append(set(filtered_idx))
         encoder_dict['note'] = PatchEmbeddings(arr.shape[1], args.num_patches, args.hidden_dim).to(args.device)
@@ -326,11 +330,12 @@ def load_and_preprocess_data_mimic(args):
         arr = torch.load(path+'.pt')
         new_idx = np.arange(arr.shape[0])
         filtered_idx = new_idx[new_idx != -1]
+        observed_idx_arr[filtered_idx, modality_dict['code']] = True
         for idx in filtered_idx:
             update_modality_combinations(idx, 'C')
         tmp = np.zeros((len(id_to_idx), arr.shape[1])) - 2
         tmp[filtered_idx] = arr[new_idx != -1]
-        observed_idx_arr[filtered_idx, 2] = True
+        
         data_dict['code'] = tmp.astype(np.float32)
         common_idx_list.append(set(filtered_idx))
         encoder_dict['code'] = PatchEmbeddings(arr.shape[1], args.num_patches, args.hidden_dim).to(args.device)
